@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const ctx=vm.createContext({location:{hash:''},document:{querySelector:()=>null},console});vm.runInContext(code,ctx);
+vm.runInContext(`people=[{id:'p1',name:'Anna'},{id:'p2',name:'Ben'}];events=[{id:'e1',title:'Januar',event_date:'2024-01-01',status:'Abgeschlossen'},{id:'e2',title:'Februar',event_date:'2024-02-01',status:'Abgeschlossen'},{id:'e3',title:'Abgesagt',event_date:'2024-03-01',status:'Abgesagt'},{id:'e4',title:'April',event_date:'2024-04-01',status:'Abgeschlossen'}];participations=[{event_id:'e1',person_id:'p1',attended:true},{event_id:'e2',person_id:'p1',attended:true},{event_id:'e3',person_id:'p1',attended:true},{event_id:'e4',person_id:'p1',attended:false}];selectedPersonId='p1'`,ctx);
+assert.equal(vm.runInContext("visitStreak('p1')",ctx),0);
+vm.runInContext("participations.find(a=>a.event_id==='e4').attended=true",ctx);
+assert.equal(vm.runInContext("visitStreak('p1')",ctx),3);
+assert.equal(vm.runInContext("visits('p1')",ctx),3);
+assert.equal(vm.runInContext("status('p2')[0]",ctx),'Noch kein Besuch');
+const profile=vm.runInContext('personDetail()',ctx);assert(profile.includes('Besuche in Folge'));assert(profile.includes('Event abgesagt'));
+const dash=vm.runInContext('dashboard()',ctx);assert(dash.includes('Teilnehmer der letzten Events'));assert(dash.includes('trend-row'));assert(!dash.includes('2024-03-01'));
+console.log('PASS: streak breaks on missed visit, canceled events excluded, zero-visit badge, attendance trend');
