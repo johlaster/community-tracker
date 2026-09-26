@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync('index.html','utf8');
 const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
-const fields={'#loading':{classList:{contains:()=>true}},'#eTitle':{value:'Mario Kart'},'#eDate':{value:'2026-10-01'},'#eStart':{value:''},'#eEnd':{value:''},'#eLocation':{value:''},'#eNotes':{value:''}};
+const fields={'#loading':{classList:{contains:()=>true}},'#eStatus':{value:'Geplant'},'#eTitle':{value:'Mario Kart'},'#eDate':{value:'2026-10-01'},'#eStart':{value:''},'#eEnd':{value:''},'#eLocation':{value:''},'#eNotes':{value:''}};
 let selected=[{value:'p2'}],loaded=0;const calls=[],alerts=[];
 const ctx=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s],querySelectorAll:s=>s==='.event-person:checked'?selected:[]},alert:x=>alerts.push(x),console});
 vm.runInContext(code,ctx);

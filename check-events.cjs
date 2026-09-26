@@ -4,7 +4,7 @@ const assert = require('node:assert/strict');
 const html = fs.readFileSync('index.html', 'utf8');
 const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
 new vm.Script(script);
-const fields = {'#eTitle': {value:'Alter Abend'}, '#eDate':{value:'2024-01-05'}, '#eStart':{value:'22:00'}, '#eEnd':{value:'01:00'}, '#eLocation':{value:'Club'}, '#eNotes':{value:'Korrigiert'}, '#loading':{classList:{contains:()=>true}}};
+const fields = {'#eStatus':{value:'Geplant'},'#eTitle': {value:'Alter Abend'}, '#eDate':{value:'2024-01-05'}, '#eStart':{value:'22:00'}, '#eEnd':{value:'01:00'}, '#eLocation':{value:'Club'}, '#eNotes':{value:'Korrigiert'}, '#loading':{classList:{contains:()=>true}}};
 const alerts=[]; const calls=[];
 const context=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:s=>alerts.push(s),console});
 vm.runInContext(script.replace(/init\(\);\s*$/, ''),context);

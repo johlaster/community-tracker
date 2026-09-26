@@ -1,0 +1,15 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const fields={'#eTitle':{value:'Abend'},'#eDate':{value:'2026-10-01'},'#eStart':{value:''},'#eEnd':{value:''},'#eStatus':{value:'Abgesagt'},'#eLocation':{value:''},'#eNotes':{value:''}};
+const alerts=[];const ctx=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:x=>alerts.push(x),console});
+vm.runInContext(code,ctx);
+vm.runInContext(`people=[];participations=[];events=[{id:'planned',title:'Geplant',event_date:'2999-01-02',status:'Geplant'},{id:'canceled',title:'Abgesagt',event_date:'2999-01-01',status:'Abgesagt'},{id:'done',title:'Fertig',event_date:'2020-01-01',status:'Abgeschlossen'}]`,ctx);
+const form=vm.runInContext(`eventForm({title:'Test',status:'Abgeschlossen'})`,ctx);
+assert(form.includes('value="Abgeschlossen" selected'));
+assert.equal(vm.runInContext('eventInput().status',ctx),'Abgesagt');
+const dash=vm.runInContext('dashboard()',ctx);assert(dash.includes('Nächstes Event'));assert(dash.includes('Geplant'));assert(!dash.includes('2999-01-01'));
+vm.runInContext("eventFilter='Abgesagt'",ctx);const list=vm.runInContext('eventsPage()',ctx);
+assert(list.includes('Abgesagt'));assert(!list.includes('Fertig'));assert(!list.includes('2999-01-02'));
+assert.equal(alerts.length,0);
+console.log('PASS: status editing, canceled event excluded from next event, event list filter');
