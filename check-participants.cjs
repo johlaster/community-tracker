@@ -1,0 +1,23 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const fields={'#existingPerson':{value:'p2'},'#existingResponse':{value:'yes'},'#existingAttended':{checked:false},'#gName':{value:'Neuer Gast'},'#gCustomer':{checked:false},'#gAttended':{checked:false},'#gBy':{value:''}};
+const alerts=[],calls=[];
+const ctx=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:x=>alerts.push(x),console});
+vm.runInContext(code,ctx);
+vm.runInContext(`session={user:{id:'owner'}};people=[{id:'p1',name:'Anna'},{id:'p2',name:'Ben'}];events=[{id:'e1',title:'Nächstes Event',event_date:'2999-01-01'}];participations=[{id:'a1',event_id:'e1',person_id:'p1',response:'yes',attended:false}];selectedEventId='e1';route='event';setLoading=()=>{};loadAll=async()=>{}`,ctx);
+ctx.mock={from(table){calls.push(['from',table]);return {insert(values){calls.push(['insert',values]);return this},select(){return this},async single(){return {error:null,data:{id:'p3'}}},then(resolve){return Promise.resolve({error:null}).then(resolve)}}}};
+vm.runInContext('sb=mock',ctx);
+(async()=>{
+ const detail=vm.runInContext('eventDetail()',ctx);
+ assert(detail.includes('0 No-Shows'));assert(detail.includes('Person hinzufügen'));
+ vm.runInContext("modal='existingPerson'",ctx);const modal=vm.runInContext('renderModal()',ctx);
+ assert(modal.includes('Ben'));assert(!modal.includes('<option value="p1">'));
+ await vm.runInContext('addExistingPerson()',ctx);
+ assert(calls.some(c=>c[0]==='insert'&&c[1].event_id==='e1'&&c[1].person_id==='p2'&&c[1].response==='yes'&&c[1].attended===false));
+ assert.equal(vm.runInContext('modal',ctx),null);
+ vm.runInContext("participations.push({event_id:'e1',person_id:'p2'})",ctx);const before=calls.length;
+ await vm.runInContext('addExistingPerson()',ctx);assert.equal(calls.length,before);assert(alerts.at(-1).includes('bereits'));
+ await vm.runInContext('addGuest()',ctx);assert(calls.some(c=>c[0]==='insert'&&c[1].person_id==='p3'&&c[1].attended===false));
+ console.log('PASS: future no-shows, available people, participation creation, duplicate guard, new guest attendance');
+})().catch(e=>{console.error(e);process.exitCode=1});
