@@ -1,0 +1,21 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const fields={'#loading':{classList:{contains:()=>true}},'#eTitle':{value:'Mario Kart Abend'},'#eDate':{value:'2026-10-10'},'#eStart':{value:'18:00'},'#eEnd':{value:'22:00'},'#eStatus':{value:'Geplant'},'#eLocation':{value:'Club'},'#eNotes':{value:'Runde 2'}};
+const calls=[],alerts=[];let loaded=0;
+const ctx=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s],querySelectorAll:()=>[{value:'p2'}]},alert:x=>alerts.push(x),console});vm.runInContext(code,ctx);
+vm.runInContext(`session={user:{id:'owner'}};people=[{id:'p1',name:'Anna'},{id:'p2',name:'Ben'}];events=[{id:'old',title:'Mario Kart Abend',event_date:'2024-01-05',start_time:'18:00:00',end_time:'22:00:00',location:'Club',notes:'Runde 2',status:'Abgeschlossen'}];participations=[{event_id:'old',person_id:'p2',response:'yes',attended:true}];render=()=>{};setLoading=()=>{}`,ctx);
+ctx.load=async()=>{loaded++};vm.runInContext('loadAll=load',ctx);
+ctx.mock={from(table){calls.push(['from',table]);return {insert(rows){calls.push(['insert',rows]);if(table==='events')return {select:()=>({single:async()=>({data:{id:'new'},error:null})})};return Promise.resolve({error:null})}}}};vm.runInContext('sb=mock',ctx);
+(async()=>{
+ vm.runInContext("openCopyEvent('old')",ctx);const modal=vm.runInContext('renderModal()',ctx);
+ assert(modal.includes('Event kopieren'));assert(modal.includes('Mario Kart Abend'));assert(modal.includes('value="Club"'));assert(modal.includes('value="18:00"'));
+ assert(!modal.includes('value="2024-01-05"'));assert(modal.includes('value="Geplant" selected'));
+ assert(modal.includes('value="p2" checked'));assert(!modal.includes('value="p1" checked'));
+ await vm.runInContext('addEvent()',ctx);
+ const created=calls.find(c=>c[0]==='insert'&&!Array.isArray(c[1]))[1];assert.equal(created.event_date,'2026-10-10');assert.equal(created.status,'Geplant');
+ const invited=calls.find(c=>c[0]==='insert'&&Array.isArray(c[1]))[1];assert.equal(invited.length,1);assert.equal(invited[0].person_id,'p2');assert.equal(invited[0].response,'none');assert.equal(invited[0].attended,false);
+ assert.equal(vm.runInContext('eventTemplateId',ctx),null);assert.equal(loaded,1);assert.equal(alerts.length,0);
+ vm.runInContext("openCopyEvent('old');closeModal();openEvent()",ctx);assert.equal(vm.runInContext('eventTemplateId',ctx),null);
+ console.log('PASS: copy prefill, blank date, selected people, reset responses, new event save');
+})().catch(e=>{console.error(e);process.exitCode=1});
