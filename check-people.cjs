@@ -1,7 +1,7 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
 const html=fs.readFileSync('index.html','utf8');
 const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
-const fields={'#pName':{value:'  Neuer Name  '},'#pCustomer':{checked:true}};
+const fields={'#pName':{value:'  Neuer Name  '},'#pCustomer':{checked:true},'#pReferrer':{value:''}};
 const alerts=[],calls=[];
 const context=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:x=>alerts.push(x),console});
 vm.runInContext(code,context);
