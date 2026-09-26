@@ -1,0 +1,27 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const html = fs.readFileSync('index.html', 'utf8');
+const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1];
+new vm.Script(script);
+const fields = {'#eTitle': {value:'Alter Abend'}, '#eDate':{value:'2024-01-05'}, '#eStart':{value:'22:00'}, '#eEnd':{value:'01:00'}, '#eLocation':{value:'Club'}, '#eNotes':{value:'Korrigiert'}, '#loading':{classList:{contains:()=>true}}};
+const alerts=[]; const calls=[];
+const context=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:s=>alerts.push(s),console});
+vm.runInContext(script.replace(/init\(\);\s*$/, ''),context);
+vm.runInContext(`session={user:{id:'owner'}};selectedEventId='old-event';modal='editEvent';setLoading=()=>{};loadAll=async()=>{};`,context);
+let result={data:[{id:'old-event'}],error:null};
+context.mock={from(table){calls.push(['from',table]);return {update(values){calls.push(['update',values]);return this},eq(key,value){calls.push(['eq',key,value]);return this},async select(){return result}}}};
+vm.runInContext('sb=mock',context);
+(async()=>{
+ const form=vm.runInContext(`eventForm({title:'<Old>',event_date:'2024-01-05',notes:'A & B',start_time:'22:00:00'})`,context);
+ assert(form.includes('&lt;Old&gt;')); assert(form.includes('2024-01-05')); assert(form.includes('A &amp; B')); assert(form.includes('22:00'));
+ await vm.runInContext('saveEvent()',context);
+ assert.equal(alerts.length,0); assert.equal(calls[1][1].event_date,'2024-01-05'); assert.equal(calls[1][1].end_time,'01:00');
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='id'&&c[2]==='old-event'));
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='user_id'&&c[2]==='owner'));
+ assert.equal(vm.runInContext('modal',context),null);
+ result={data:null,error:{message:'Save failed'}};vm.runInContext("modal='editEvent'",context);await vm.runInContext('saveEvent()',context);
+ assert.equal(alerts.at(-1),'Save failed');assert.equal(vm.runInContext('modal',context),'editEvent');
+ fields['#eTitle'].value=' ';const before=calls.length;await vm.runInContext('saveEvent()',context);assert.equal(calls.length,before);
+ console.log('PASS: syntax, prefill/escaping, historical and overnight event save, ownership filters, failure retention, required fields');
+})().catch(e=>{console.error(e);process.exitCode=1});
