@@ -1,0 +1,21 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const fields={'#pName':{value:'  Neuer Name  '},'#pCustomer':{checked:true}};
+const alerts=[],calls=[];
+const context=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:x=>alerts.push(x),console});
+vm.runInContext(code,context);
+vm.runInContext(`session={user:{id:'owner'}};people=[{id:'p1',name:'Alt',customer:false,created_at:'2024-01-01'}];events=[{id:'e1',title:'Altes Event',event_date:'2024-02-01'}];participations=[{event_id:'e1',person_id:'p1',attended:true,response:'yes'}];selectedPersonId='p1';modal='editPerson';setLoading=()=>{};loadAll=async()=>{}`,context);
+context.mock={from(table){calls.push(['from',table]);return {update(values){calls.push(['update',values]);return this},eq(key,value){calls.push(['eq',key,value]);return this},async select(){return{data:[{id:'p1'}],error:null}}}}};
+vm.runInContext('sb=mock',context);
+(async()=>{
+ const profile=vm.runInContext('personDetail()',context);
+ assert(profile.includes('Altes Event'));assert(profile.includes('01.02.2024'));assert(profile.includes('1</div>'));
+ const page=vm.runInContext('peoplePage()',context);assert(page.includes('openPersonDetail'));
+ await vm.runInContext('savePerson()',context);
+ assert.equal(calls[1][1].name,'Neuer Name');assert.equal(calls[1][1].customer,true);
+ assert(calls.some(c=>c[0]==='eq'&&c[1]==='user_id'&&c[2]==='owner'));
+ assert.equal(vm.runInContext('modal',context),null);
+ assert.equal(alerts.length,0);
+ console.log('PASS: profile history, person navigation, name/customer save, ownership filter');
+})().catch(e=>{console.error(e);process.exitCode=1});
