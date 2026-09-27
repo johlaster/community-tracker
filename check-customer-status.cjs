@@ -1,0 +1,21 @@
+const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict');
+const html=fs.readFileSync('index.html','utf8');
+const code=[...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].at(-1)[1].replace(/init\(\);\s*$/,'');
+const fields={'#pName':{value:'Anna'},'#pCustomerStatus':{value:'through_event'},'#pReferrer':{value:''}};
+const calls=[];let loaded=0;
+const ctx=vm.createContext({location:{hash:''},document:{querySelector:s=>fields[s]},alert:console.log,console});
+vm.runInContext(code,ctx);
+vm.runInContext(`session={user:{id:'owner'}};people=[{id:'p1',name:'Anna',customer:false,customer_status:'none'}];events=[];participations=[];selectedPersonId='p1';modal='editPerson';setLoading=()=>{}`,ctx);
+ctx.mock={from(){return{update(values){calls.push(values);return this},eq(){return this},async select(){return{data:[{id:'p1'}],error:null}}}}};
+ctx.load=async()=>{loaded++};vm.runInContext('sb=mock;loadAll=load',ctx);
+(async()=>{
+  await vm.runInContext('savePerson()',ctx);
+  assert.equal(calls[0].customer_status,'through_event');
+  assert.equal(calls[0].customer,true);
+  assert.equal(loaded,1);
+  vm.runInContext(`people[0].customer_status='through_event';people[0].customer=true`,ctx);
+  const row=vm.runInContext('personRow(people[0])',ctx);assert(row.includes('Durch Event gewonnen'));
+  vm.runInContext(`people[0].customer_status='before_event'`,ctx);
+  assert(vm.runInContext('dashboard()',ctx).includes('Kunden'));
+  console.log('PASS: customer origin status save, display, and dashboard counting');
+})().catch(error=>{console.error(error);process.exitCode=1});
