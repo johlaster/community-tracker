@@ -18,6 +18,7 @@ ctx.mock={async rpc(name,args){rpcCalls.push([name,args]);return{data:true,error
 ctx.load=async()=>{loaded++};
 vm.runInContext(`
   session={user:{id:'owner',email:'owner@example.com'}};
+  accessRole='admin';
   people=[{id:'p1',name:'Anna',user_id:'owner',referred_by:null}];
   events=[{id:'e1',title:'Freitag',event_date:'2026-09-25',user_id:'owner'}];
   participations=[{id:'a1',event_id:'e1',person_id:'p1',response:'yes',attended:true}];
