@@ -17,5 +17,7 @@ ctx.load=async()=>{loaded++};vm.runInContext('sb=mock;loadAll=load',ctx);
   const row=vm.runInContext('personRow(people[0])',ctx);assert(row.includes('Durch Event gewonnen'));
   vm.runInContext(`people[0].customer_status='before_event'`,ctx);
   assert(vm.runInContext('dashboard()',ctx).includes('Kunden'));
+  vm.runInContext(`customerFilter='through_event';people.push({id:'p2',name:'Ben',customer_status:'through_event'})`,ctx);
+  const filtered=vm.runInContext('peoplePage()',ctx);assert(filtered.includes('Ben'));assert(!filtered.includes('Anna'));
   console.log('PASS: customer origin status save, display, and dashboard counting');
 })().catch(error=>{console.error(error);process.exitCode=1});
