@@ -158,6 +158,7 @@ const _renderInlineFocus=render;render=function(){_renderInlineFocus();if(route=
 function toggleAdminMenu(){document.getElementById('adminMenu')?.classList.toggle('hidden')}
 topbarAction=function(){if(route==='dashboard'&&isAdmin())return `<div class="admin-actions"><button class="menu-toggle" title="Verwaltung" onclick="toggleAdminMenu()">☰</button><div id="adminMenu" class="admin-menu hidden"><button onclick="exportBackup();toggleAdminMenu()">Sicherung</button><button onclick="openRestore();toggleAdminMenu()">Wiederherstellen</button><button onclick="openAccess();toggleAdminMenu()">Zugriff</button></div></div>`;return ''};
 const _renderHeaderMenu=render;render=function(){_renderHeaderMenu();const header=document.querySelector('.topbar-inner');if(!header)return;const actions=[...header.querySelectorAll('button')].filter(b=>/exportBackup|openRestore|openAccess/.test(b.getAttribute('onclick')||''));if(!actions.length||header.querySelector('.menu-toggle'))return;const menu=document.createElement('div');menu.className='admin-menu hidden';actions.forEach(button=>{button.remove();menu.appendChild(button)});const toggle=document.createElement('button');toggle.className='menu-toggle';toggle.title='Verwaltung';toggle.textContent='☰';toggle.onclick=()=>menu.classList.toggle('hidden');header.append(toggle,menu)};
+const _renderMenuOrder=render;render=function(){_renderMenuOrder();const menu=document.querySelector('.admin-actions'),parent=menu?.parentElement;if(menu&&parent)parent.appendChild(menu)};
 init();
 </script>
 </body>
